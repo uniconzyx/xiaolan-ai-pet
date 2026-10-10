@@ -1,0 +1,15 @@
+# 敏感：真实 API Key 配置，绝不提交
+config.json
+
+# 本地数据
+todos.json
+whisper-models/
+*.mp3
+*.wav
+
+# 打包与运行产物
+*.spec
+build/
+dist/
+__pycache__/
+*.pyc

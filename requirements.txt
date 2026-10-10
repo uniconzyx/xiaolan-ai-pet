@@ -1,0 +1,16 @@
+# 核心依赖
+PyQt5>=5.15
+requests>=2.28
+
+# 语音识别（离线，可选；缺失时降级为文字输入）
+faster-whisper
+SpeechRecognition
+sounddevice
+
+# 语音合成（可选；edge-tts 需联网，pyttsx3 离线）
+edge-tts
+pyttsx3
+pygame
+
+# 精灵图动画（可选，仅当使用 pet.json + spritesheet.webp 时）
+Pillow

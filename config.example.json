@@ -1,0 +1,22 @@
+{
+  "api_key": "sk-在此填入你的DeepSeekAPIKey",
+  "base_url": "https://api.deepseek.com",
+  "model": "deepseek-chat",
+  "system_prompt": "你是一个可爱的Q版桌宠，名字叫小蓝，性格活泼、乐于助人，喜欢聊AI和科技话题。回答简短可爱，中文回复。",
+  "voice_enabled": true,
+  "tts_voice": "zh-CN-XiaoxiaoNeural",
+  "speech_rate": "+0%",
+  "speech_volume": 1.0,
+  "tomato_min": 25,
+  "sedentary_enabled": true,
+  "sedentary_min": 45,
+  "sleep_enabled": true,
+  "sleep_min": 5,
+  "sys_monitor_enabled": false,
+  "idle_bubble_enabled": true,
+  "focus_quiet": true,
+  "quick_launch": [
+    {"name": "我的文档", "command": "explorer C:\\Users\\你的用户名"},
+    {"name": "启动 Jupyter", "command": "jupyter notebook"}
+  ]
+}
