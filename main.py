@@ -118,9 +118,15 @@ EMOTION_MAP = {                       # 状态 → 姿态图文件
     "thinking": "emo_thinking.png",
     "running_left": "emo_running_left.png",
     "running_right": "emo_running_right.png",
+    "sit": "emo_sit.png",
+    "sleep": "emo_sleep.png",
+    "shy": "emo_shy.png",
+    "walk2": "emo_walk2.png",
 }
-# 休眠/告警状态复用已有姿态图
-EMOTION_ALIAS = {"sleep": "emo_idle.png", "alarm": "emo_failed.png"}
+# 走路帧循环
+WALK_FRAMES = ["emo_running_left.png", "emo_walk2.png", "emo_running_right.png", "emo_walk2.png"]
+# 告警状态复用失败图
+EMOTION_ALIAS = {"alarm": "emo_failed.png"}
 
 PET_JSON    = "pet.json"
 SHEET_FILE  = "spritesheet.webp"
@@ -389,18 +395,17 @@ class SpriteAnimator(QObject):
         self.avatar_base = base.scaled(PET_SIZE, PET_SIZE,
                                        Qt.KeepAspectRatio, Qt.SmoothTransformation)
         # 加载 3D 姿态图（透明 PNG）；缺失时回退 avatar.png
-        self.emotions = {}
+        self.emotions = {}  # 按文件名存
         emo_dir = os.path.join(BASE_DIR, EMOTION_DIR)
-        all_map = dict(EMOTION_MAP)
-        all_map.update(EMOTION_ALIAS)
-        for state, fname in all_map.items():
+        all_files = set(EMOTION_MAP.values()) | set(EMOTION_ALIAS.values())
+        for fname in all_files:
             path = os.path.join(emo_dir, fname)
             pm = QPixmap(path)
             if not pm.isNull():
-                self.emotions[state] = pm.scaled(
+                self.emotions[fname] = pm.scaled(
                     PET_SIZE, PET_SIZE, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         if not self.emotions:
-            self.emotions["idle"] = self.avatar_base
+            self.emotions["emo_idle.png"] = self.avatar_base
 
     @property
     def using_spritesheet(self):
@@ -417,7 +422,13 @@ class SpriteAnimator(QObject):
             if not fr:
                 return QPixmap()
             return fr[min(self.idx, len(fr) - 1)]
-        base = self.emotions.get(self.state) or self.emotions.get("idle", self.avatar_base)
+        # 走路状态：多帧循环切换
+        if self.state in ("running_left", "running_right"):
+            frame_file = WALK_FRAMES[self.idx % len(WALK_FRAMES)]
+            base = self.emotions.get(frame_file) or self.emotions.get("emo_idle.png", self.avatar_base)
+        else:
+            fname = EMOTION_MAP.get(self.state) or EMOTION_ALIAS.get(self.state, "emo_idle.png")
+            base = self.emotions.get(fname) or self.emotions.get("emo_idle.png", self.avatar_base)
         _, scale, freq = AVATAR_MOTION.get(self.state, AVATAR_MOTION["idle"])
         k = 1.0 + scale * math.sin(self._t * 2 * math.pi * freq)
         size = max(1, int(PET_SIZE * k))
@@ -436,6 +447,8 @@ class SpriteAnimator(QObject):
             fr = self.state_frames.get(self.state)
             if fr:
                 self.idx = (self.idx + 1) % len(fr)
+        elif self.state in ("running_left", "running_right"):
+            self.idx += 1
 
     def is_loop(self):
         return self.state in self.loop_states
@@ -934,7 +947,7 @@ class DesktopPet(QWidget):
     def _maybe_fidget(self):
         if (self.state == "idle" and not self.busy
                 and not self.listening and self._drag_start is None):
-            action = random.choice(("waving", "jump", "thinking", "stand"))
+            action = random.choice(("waving", "jump", "thinking", "stand", "sit", "shy"))
             self._set_state(action)
             # 1.5 秒后回 idle
             QTimer.singleShot(1500, lambda: self._set_state("idle"))
