@@ -39,9 +39,10 @@ FRAME_RATE      = 100          # 动画帧间隔 ms
 CLICK_RADIUS    = 8            # 点击判定移动阈值 px
 MAX_HISTORY     = 10           # 对话记忆轮数
 API_TIMEOUT     = 30           # API 请求超时秒
-BUBBLE_MAX_WIDTH = 160         # 气泡最大宽度（自适应文字，长文换行）
+BUBBLE_MAX_WIDTH = 220         # 气泡最大宽度（桌宠放大后同步加宽）
 BUBBLE_BG       = "rgba(74,144,226,235)"  # 蓝色气泡（alpha=235）
 BUBBLE_FG       = "#ffffff"        # 气泡文字：白色
+BUBBLE_FONT     = 16               # 气泡字号
 HOTKEY          = "Ctrl+Alt+V" # 全局录音快捷键
 DEFAULT_MODEL   = "deepseek-chat"
 DEFAULT_BASE    = "https://api.deepseek.com"
@@ -448,14 +449,18 @@ class ChatBubble(QWidget):
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.label = QLabel(self)
         self.label.setWordWrap(True)
-        self.label.setStyleSheet("color:%s;background:transparent;" % BUBBLE_FG)
+        self.label.setStyleSheet("color:%s;background:transparent;font-size:%dpx;" % (BUBBLE_FG, BUBBLE_FONT))
         self.label.setMaximumWidth(BUBBLE_MAX_WIDTH)
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(16, 12, 16, 12)
+        lay.setContentsMargins(18, 14, 18, 14)
         lay.addWidget(self.label)
         self.timer = QTimer(self)
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.hide)
+        # 淡入动画
+        from PyQt5.QtCore import QPropertyAnimation
+        self._anim = QPropertyAnimation(self, b"windowOpacity")
+        self._anim.setDuration(200)
 
     def paintEvent(self, event):
         p = QPainter(self)
@@ -469,8 +474,13 @@ class ChatBubble(QWidget):
         self.label.setText(text)
         self.label.adjustSize()
         self.adjustSize()
+        self.setWindowOpacity(0.0)
         self.show()
         self.raise_()
+        self._anim.stop()
+        self._anim.setStartValue(0.0)
+        self._anim.setEndValue(1.0)
+        self._anim.start()
         self.timer.start(timeout)
 
     def position_above(self, geo):
@@ -804,6 +814,12 @@ class DesktopPet(QWidget):
         self._idle_bubble_timer.setSingleShot(True)
         self._schedule_idle_bubble()
 
+        # 随机小动作（idle 时偶尔挥手/跳跃/托腮）
+        self._fidget_timer = QTimer(self)
+        self._fidget_timer.setSingleShot(True)
+        self._fidget_timer.timeout.connect(self._maybe_fidget)
+        self._schedule_fidget()
+
         # 实用功能定时器
         self.tomato_timer = QTimer(self)
         self.tomato_timer.timeout.connect(self._tomato_tick)
@@ -909,6 +925,20 @@ class DesktopPet(QWidget):
                                   timeout=IDLE_BUBBLE_SHOW)
             self.bubble.position_above(self.frameGeometry())
         self._schedule_idle_bubble()
+
+    # ---------- 随机小动作 ----------
+    def _schedule_fidget(self):
+        delay = random.randint(20, 45)  # 20~45 秒一次
+        self._fidget_timer.start(delay * 1000)
+
+    def _maybe_fidget(self):
+        if (self.state == "idle" and not self.busy
+                and not self.listening and self._drag_start is None):
+            action = random.choice(("waving", "jump", "thinking", "stand"))
+            self._set_state(action)
+            # 1.5 秒后回 idle
+            QTimer.singleShot(1500, lambda: self._set_state("idle"))
+        self._schedule_fidget()
 
     # ---------- 实用功能：番茄钟 ----------
     def _tomato_tick(self):
