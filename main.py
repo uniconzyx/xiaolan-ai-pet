@@ -111,7 +111,7 @@ QUICK_LAUNCH_ITEMS = [         # 快捷启动项：{名称, 命令}
 
 # 屏幕感知：窗口关键词 → 桌宠姿态
 SCENE_MAP = {
-    "code|vscode|visual studio|pycharm|cursor|terminal|cmd|python|idea": "coding",
+    "code|vscode|visual studio|pycharm|cursor|terminal|cmd|python|idea|doubao|chatgpt|claude|gemini|agent|豆包|deepseek|kimi": "coding",
     "bilibili|youtube|netflix|video|player|动漫|视频": "waving",
     "error|exception|崩溃|错误|fail|traceback": "failed",
     "game|steam|游戏|unity": "running_left",
@@ -144,7 +144,8 @@ EMOTION_MAP = {                       # 状态 → 姿态图文件
     "sleep": "emo_sleep.png",
     "shy": "emo_shy.png",
     "walk2": "emo_walk2.png",
-    "coding": "emo_thinking.png",
+    "coding": "emo_coding.png",
+    "coding_old": "emo_thinking.png",
 }
 # 走路帧循环
 WALK_FRAMES = ["emo_running_left.png", "emo_walk2.png", "emo_running_right.png", "emo_walk2.png"]
