@@ -63,10 +63,13 @@ AVATAR_MOTION = {
     "failed":        (5,  0.03, 0.6),
     "waiting":       (6,  0.04, 0.9),
     "thinking":      (7,  0.06, 0.8),
+    "coding":        (4,  0.04, 6.0),   # 敲代码：快速小幅度抖动
     "running_left":  (0,  0.00, 0.0),
     "running_right": (0,  0.00, 0.0),
-    "sleep":         (1,  0.00, 0.0),   # 休眠：几乎不动
-    "alarm":         (8,  0.05, 4.0),   # 告警：小幅快抖
+    "sleep":         (1,  0.00, 0.0),
+    "alarm":         (8,  0.05, 4.0),
+    "sit":           (1,  0.01, 0.5),
+    "shy":           (2,  0.02, 1.0),
 }
 WALK_STEP       = 6            # 走动每帧横向步长 px
 WALK_DISTANCE   = 120          # 一次走动距离 px
@@ -108,7 +111,7 @@ QUICK_LAUNCH_ITEMS = [         # 快捷启动项：{名称, 命令}
 
 # 屏幕感知：窗口关键词 → 桌宠姿态
 SCENE_MAP = {
-    "code|vscode|visual studio|pycharm|cursor|terminal|cmd|python": "thinking",
+    "code|vscode|visual studio|pycharm|cursor|terminal|cmd|python|idea": "coding",
     "bilibili|youtube|netflix|video|player|动漫|视频": "waving",
     "error|exception|崩溃|错误|fail|traceback": "failed",
     "game|steam|游戏|unity": "running_left",
@@ -116,6 +119,14 @@ SCENE_MAP = {
     "chat|wechat|微信|qq|discord|slack": "shy",
 }
 WINDOW_POLL_INTERVAL = 3000     # 窗口监听间隔 ms
+CODING_TEXTS = [
+    "你写代码，我也写代码！",
+    "代码千万行，安全第一条",
+    "多喝热水，保护颈椎",
+    "BUG 退散！",
+    "今日代码，明日上线",
+]
+CODING_CHEER_INTERVAL = 180000  # coding 状态每 3 分钟鼓励一次
 
 AVATAR_FILE = "avatar.png"
 EMOTION_DIR = "emotions"              # 3D 神态姿态图目录（透明 PNG）
@@ -133,6 +144,7 @@ EMOTION_MAP = {                       # 状态 → 姿态图文件
     "sleep": "emo_sleep.png",
     "shy": "emo_shy.png",
     "walk2": "emo_walk2.png",
+    "coding": "emo_thinking.png",
 }
 # 走路帧循环
 WALK_FRAMES = ["emo_running_left.png", "emo_walk2.png", "emo_running_right.png", "emo_walk2.png"]
@@ -910,6 +922,10 @@ class DesktopPet(QWidget):
         self.activity_timer.timeout.connect(self._check_activity)
         self.activity_timer.setInterval(3000)
         self.activity_timer.start()
+        # coding 状态鼓励台词定时器
+        self._coding_cheer_timer = QTimer(self)
+        self._coding_cheer_timer.setSingleShot(True)
+        self._coding_cheer_timer.timeout.connect(self._coding_cheer)
 
         self._drag_start = None
         self._press_pos = QPoint()
@@ -1079,6 +1095,19 @@ class DesktopPet(QWidget):
         if not self.sense_enabled or self.busy or self.listening:
             return
         if self.state in ("sleep", "alarm"):
+            return
+        # coding 进入
+        if scene == "coding" and self.state != "coding":
+            self._set_state("coding")
+            self.bubble.show_text(random.choice(CODING_TEXTS), timeout=3000)
+            self.bubble.position_above(self.frameGeometry())
+            self._coding_cheer_timer.start(CODING_CHEER_INTERVAL)
+            return
+        # coding 退出（切走窗口）
+        if self.state == "coding" and scene != "coding":
+            self._coding_cheer_timer.stop()
+            self._set_state("waving")
+            QTimer.singleShot(1200, lambda: self._set_state("idle"))
             return
         self._set_state(scene)
 
@@ -1415,6 +1444,12 @@ class DesktopPet(QWidget):
         else:
             self.bubble.show_text("找不到热榜组件", timeout=2500)
             self.bubble.position_above(self.frameGeometry())
+
+    def _coding_cheer(self):
+        if self.state == "coding":
+            self.bubble.show_text(random.choice(CODING_TEXTS[1:]), timeout=3000)
+            self.bubble.position_above(self.frameGeometry())
+            self._coding_cheer_timer.start(CODING_CHEER_INTERVAL)
 
     def _toggle_sense(self):
         self.sense_enabled = not self.sense_enabled
