@@ -1243,6 +1243,7 @@ class DesktopPet(QWidget):
         m.addAction("➖ 删除待办", self._remove_todo)
         m.addAction("🚀 快捷启动", lambda: self._quick_launch())
         m.addAction("📊 系统信息", lambda: self._maybe_show_sysmon())
+        m.addAction("🔥 AI 热榜", self._open_hotlist)
         m.addSeparator()
         m.addAction("🔄 走两步", lambda: self._set_state(
             random.choice(("running_left", "running_right"))))
@@ -1251,6 +1252,26 @@ class DesktopPet(QWidget):
         m.addSeparator()
         m.addAction("🚪 退出程序", self.close)
         m.exec_(self.mapToGlobal(pos))
+
+    def _open_hotlist(self):
+        """启动 AI 热榜桌面组件（GitHub / HN / HF 论文多源）"""
+        candidates = [
+            os.path.join(BASE_DIR, "GitHubAIHotlist.exe"),
+            r"C:\Users\zyx\GitHubAIHotlist\GitHubAIHotlist.exe",
+        ]
+        exe = next((p for p in candidates if os.path.exists(p)), None)
+        if exe:
+            try:
+                subprocess.Popen([exe], cwd=os.path.dirname(exe))
+                self._set_state("waving")
+                self.bubble.show_text("热榜已打开~ GitHub / HN / HF 论文", timeout=2500)
+                self.bubble.position_above(self.frameGeometry())
+            except Exception as e:
+                self.bubble.show_text("启动失败: " + str(e)[:30], timeout=2500)
+                self.bubble.position_above(self.frameGeometry())
+        else:
+            self.bubble.show_text("找不到热榜组件", timeout=2500)
+            self.bubble.position_above(self.frameGeometry())
 
     def _open_settings(self):
         dlg = SettingsDialog(self.cfg)
