@@ -465,7 +465,7 @@ class ChatBubble(QWidget):
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        p.setBrush(QColor(BUBBLE_BG))
+        p.setBrush(QColor.fromRgb(74, 144, 226, 235))  # 蓝色半透明
         p.setPen(Qt.NoPen)
         p.drawRoundedRect(self.rect(), 16, 16)
         super().paintEvent(event)
