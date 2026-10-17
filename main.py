@@ -465,7 +465,7 @@ class ChatBubble(QWidget):
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        p.setBrush(QColor.fromRgb(74, 144, 226, 235))  # 蓝色半透明
+        p.setBrush(QColor.fromRgb(130, 185, 240, 190))  # 浅蓝色半透明，更柔和
         p.setPen(Qt.NoPen)
         p.drawRoundedRect(self.rect(), 16, 16)
         super().paintEvent(event)
@@ -499,7 +499,7 @@ class TimeBubble(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.label = QLabel(self)
-        self.label.setStyleSheet("color:#888888;background:transparent;font-size:15px;")
+        self.label.setStyleSheet("color:#3A3A3A;background:transparent;font-size:15px;font-weight:bold;")
         lay = QVBoxLayout(self)
         lay.setContentsMargins(10, 6, 10, 6)
         lay.addWidget(self.label)
