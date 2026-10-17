@@ -448,7 +448,11 @@ class SpriteAnimator(QObject):
             if fr:
                 self.idx = (self.idx + 1) % len(fr)
         elif self.state in ("running_left", "running_right"):
-            self.idx += 1
+            # 走路帧切换放缓：每 8 次 advance 才切一帧
+            self._walk_frame_counter = getattr(self, "_walk_frame_counter", 0) + 1
+            if self._walk_frame_counter >= 8:
+                self.idx += 1
+                self._walk_frame_counter = 0
 
     def is_loop(self):
         return self.state in self.loop_states
@@ -850,6 +854,11 @@ class DesktopPet(QWidget):
         self.sysmon_timer.setInterval(SYS_MONITOR_INTERVAL)
         if self.cfg.get("sys_monitor_enabled", False):
             self.sysmon_timer.start()
+        # 打字/负载监控姿态
+        self.activity_timer = QTimer(self)
+        self.activity_timer.timeout.connect(self._check_activity)
+        self.activity_timer.setInterval(3000)
+        self.activity_timer.start()
 
         self._drag_start = None
         self._press_pos = QPoint()
@@ -1013,6 +1022,36 @@ class DesktopPet(QWidget):
             return
         if self.busy or self.listening:
             return
+
+    # ---------- 打字检测 + 系统负载监控姿态 ----------
+    def _check_activity(self):
+        if self.busy or self.listening or self._drag_start is not None:
+            return
+        if self.state in ("sleep", "alarm", "failed"):
+            return
+        # 检测键盘活动（GetAsyncKeyState 检测最近按键）
+        typing = False
+        try:
+            import ctypes
+            user32 = ctypes.windll.user32
+            for vk in range(0x30, 0x5B):  # 0-9, A-Z
+                if user32.GetAsyncKeyState(vk) & 0x8000:
+                    typing = True
+                    break
+        except Exception:
+            pass
+        # 系统负载
+        try:
+            cpu = cpu_percent()
+            mem = memory_percent()
+        except Exception:
+            cpu, mem = 0, 0
+        if typing and self.state != "waiting":
+            self._set_state("waiting")  # 打字时忙碌姿态
+        elif (cpu > 60 or mem > 85) and self.state not in ("waiting", "thinking"):
+            self._set_state("thinking")  # 高负载思考姿态
+        elif not typing and self.state in ("waiting",) and cpu < 30:
+            self._set_state("idle")  # 恢复
         idle = self._system_idle_ms()
         limit = int(self.cfg.get("sleep_min", SLEEP_DEFAULT_MIN)) * 60000
         if idle >= limit and self.state not in ("sleep", "alarm"):
