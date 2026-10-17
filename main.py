@@ -41,7 +41,7 @@ MAX_HISTORY     = 10           # 对话记忆轮数
 API_TIMEOUT     = 30           # API 请求超时秒
 BUBBLE_MAX_WIDTH = 220         # 气泡最大宽度（桌宠放大后同步加宽）
 BUBBLE_BG       = "rgba(74,144,226,235)"  # 蓝色气泡（alpha=235）
-BUBBLE_FG       = "#1A3A5C"        # 气泡文字：深蓝（浅蓝底配深字）
+BUBBLE_FG       = "#2B6CB0"        # 气泡文字：深蓝（热榜同款）
 BUBBLE_FONT     = 16               # 气泡字号
 HOTKEY          = "Ctrl+Alt+V" # 全局录音快捷键
 DEFAULT_MODEL   = "deepseek-chat"
@@ -465,7 +465,7 @@ class ChatBubble(QWidget):
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
-        p.setBrush(QColor.fromRgb(173, 216, 245, 255))  # 不透明浅蓝色
+        p.setBrush(QColor.fromRgb(240, 247, 255, 200))  # 热榜同款淡蓝白底
         p.setPen(Qt.NoPen)
         p.drawRoundedRect(self.rect(), 16, 16)
         super().paintEvent(event)
