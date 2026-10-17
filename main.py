@@ -106,6 +106,17 @@ QUICK_LAUNCH_ITEMS = [         # 快捷启动项：{名称, 命令}
     {"name": "启动 jupyter",  "cmd": r"cmd /c start jupyter notebook"},
 ]
 
+# 屏幕感知：窗口关键词 → 桌宠姿态
+SCENE_MAP = {
+    "code|vscode|visual studio|pycharm|cursor|terminal|cmd|python": "thinking",
+    "bilibili|youtube|netflix|video|player|动漫|视频": "waving",
+    "error|exception|崩溃|错误|fail|traceback": "failed",
+    "game|steam|游戏|unity": "running_left",
+    "word|excel|ppt|document|文档|写作": "stand",
+    "chat|wechat|微信|qq|discord|slack": "shy",
+}
+WINDOW_POLL_INTERVAL = 3000     # 窗口监听间隔 ms
+
 AVATAR_FILE = "avatar.png"
 EMOTION_DIR = "emotions"              # 3D 神态姿态图目录（透明 PNG）
 EMOTION_MAP = {                       # 状态 → 姿态图文件
@@ -538,6 +549,39 @@ class TimeBubble(QWidget):
         self.raise_()
 
 
+# ============================ 屏幕感知 ============================
+class ScreenPerceiver(QObject):
+    """纯本地窗口监听：每 3 秒读活动窗口标题，关键词匹配 → 发姿态信号"""
+    scene_detected = pyqtSignal(str)  # 发出目标姿态名
+    def __init__(self):
+        super().__init__()
+        self.enabled = True
+        self._running = True
+
+    def run(self):
+        import time as _t
+        last_scene = None
+        while self._running:
+            try:
+                if self.enabled:
+                    import pygetwindow as gw
+                    win = gw.getActiveWindow()
+                    if win and win.title:
+                        title = win.title.lower()
+                        for keys, scene in SCENE_MAP.items():
+                            if any(k in title for k in keys.split("|")):
+                                if scene != last_scene:
+                                    self.scene_detected.emit(scene)
+                                    last_scene = scene
+                                break
+            except Exception:
+                pass
+            _t.sleep(WINDOW_POLL_INTERVAL / 1000.0)
+
+    def stop(self):
+        self._running = False
+
+
 # ============================ 语音引擎 ============================
 class VoiceEngine(QObject):
     listened = pyqtSignal(str)
@@ -819,6 +863,13 @@ class DesktopPet(QWidget):
         self.timer.timeout.connect(self._tick)
         self.timer.start(FRAME_RATE)
 
+        # 屏幕感知：窗口监听线程
+        self.perceiver = ScreenPerceiver()
+        self.perceiver_thread = threading.Thread(target=self.perceiver.run, daemon=True)
+        self.perceiver_thread.start()
+        self.perceiver.scene_detected.connect(self._on_scene)
+        self.sense_enabled = self.cfg.get("screen_sense_enabled", True)
+
         # 空闲随机走动
         self.walk_timer = QTimer(self)
         self.walk_timer.timeout.connect(self._start_walk)
@@ -1022,6 +1073,14 @@ class DesktopPet(QWidget):
             return
         if self.busy or self.listening:
             return
+
+    # ---------- 屏幕感知回调 ----------
+    def _on_scene(self, scene):
+        if not self.sense_enabled or self.busy or self.listening:
+            return
+        if self.state in ("sleep", "alarm"):
+            return
+        self._set_state(scene)
 
     # ---------- 打字检测 + 系统负载监控姿态 ----------
     def _check_activity(self):
@@ -1327,6 +1386,8 @@ class DesktopPet(QWidget):
         m.addAction("📊 系统信息", lambda: self._maybe_show_sysmon())
         m.addAction("🔥 AI 热榜", self._open_hotlist)
         m.addSeparator()
+        sense_text = "👁 屏幕感知：开" if self.sense_enabled else "👁 屏幕感知：关"
+        m.addAction(sense_text, self._toggle_sense)
         m.addAction("🔄 走两步", lambda: self._set_state(
             random.choice(("running_left", "running_right"))))
         m.addAction("⚙ 设置", self._open_settings)
@@ -1354,6 +1415,12 @@ class DesktopPet(QWidget):
         else:
             self.bubble.show_text("找不到热榜组件", timeout=2500)
             self.bubble.position_above(self.frameGeometry())
+
+    def _toggle_sense(self):
+        self.sense_enabled = not self.sense_enabled
+        self.cfg["screen_sense_enabled"] = self.sense_enabled
+        self.bubble.show_text("屏幕感知已" + ("开启" if self.sense_enabled else "关闭"))
+        self.bubble.position_above(self.frameGeometry())
 
     def _open_settings(self):
         dlg = SettingsDialog(self.cfg)
