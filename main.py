@@ -63,7 +63,7 @@ AVATAR_MOTION = {
     "failed":        (5,  0.03, 0.6),
     "waiting":       (6,  0.04, 0.9),
     "thinking":      (7,  0.06, 0.8),
-    "coding":        (4,  0.04, 6.0),   # 敲代码：快速小幅度抖动
+    "coding":        (0,  0.00, 0.0),   # 敲代码：静静坐着，不跳动
     "running_left":  (0,  0.00, 0.0),
     "running_right": (0,  0.00, 0.0),
     "sleep":         (1,  0.00, 0.0),
@@ -450,6 +450,12 @@ class SpriteAnimator(QObject):
         if self.state in ("running_left", "running_right"):
             frame_file = WALK_FRAMES[self.idx % len(WALK_FRAMES)]
             base = self.emotions.get(frame_file) or self.emotions.get("emo_idle.png", self.avatar_base)
+        elif self.state == "coding":
+            # coding 状态：敲键盘 ↔ 托腮思考，每 5 秒交替
+            if int(self._t) % 10 < 5:
+                base = self.emotions.get("emo_coding.png") or self.emotions.get("emo_idle.png")
+            else:
+                base = self.emotions.get("emo_thinking.png") or self.emotions.get("emo_idle.png")
         else:
             fname = EMOTION_MAP.get(self.state) or EMOTION_ALIAS.get(self.state, "emo_idle.png")
             base = self.emotions.get(fname) or self.emotions.get("emo_idle.png", self.avatar_base)
