@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-小蓝 Q 版 3D 桌宠 —— Windows 桌面 AI 对话 + 实用工具宠物（功能增强版）
+凯喵 Q 版 3D 桌宠 —— Windows 桌面 AI 对话 + 实用工具宠物
 =====================================================================
 形象：3D 游戏低模风，9 姿态透明图（emotions/），随状态切换。
 状态：idle趴着 / stand站立 / waving挥手 / jump跳跃 / failed沮丧 /
@@ -47,7 +47,7 @@ HOTKEY          = "Ctrl+Alt+V" # 全局录音快捷键
 DEFAULT_MODEL   = "deepseek-chat"
 DEFAULT_BASE    = "https://api.deepseek.com"
 DEFAULT_VOICE   = "zh-CN-XiaoxiaoNeural"
-DEFAULT_PROMPT  = "你是一个可爱的Q版桌宠，名字叫小蓝，性格活泼、乐于助人，喜欢聊AI和科技话题。回答简短可爱，中文回复。"
+DEFAULT_PROMPT  = "你是一个可爱的Q版桌宠，名字叫凯喵，性格活泼、乐于助人，喜欢聊AI和科技话题。回答简短可爱，中文回复。"
 
 # ---- 8 状态动画（精灵图行映射）----
 STATE_TO_ROW = {
@@ -82,7 +82,7 @@ IDLE_BUBBLE_SHOW     = 4000    # 气泡显示时长 ms
 IDLE_BUBBLE_TEXTS = [
     "在摸鱼吗？一起看星星吧~",
     "今天也要元气满满哦！",
-    "小蓝在呢，随时找我聊天~",
+    "凯喵在呢，随时找我聊天~",
     "你知道 AI 也在偷偷卷吗？",
     "要不要我给你讲个冷笑话？",
     "休息一下，眼睛也要放松哦~",
@@ -766,7 +766,7 @@ class VoiceEngine(QObject):
 class SettingsDialog(QDialog):
     def __init__(self, cfg):
         super().__init__()
-        self.setWindowTitle("小蓝 · 设置")
+        self.setWindowTitle("凯喵 · 设置")
         self.setMinimumWidth(480)
         self.key = QLineEdit(cfg.get("api_key", ""))
         self.key.setEchoMode(QLineEdit.Password)
@@ -805,7 +805,7 @@ class SettingsDialog(QDialog):
         form.addRow("语音回复", self.voice_on)
         form.addRow("语音角色", self.voice)
         form.addRow("语速(如 +20%)", self.rate)
-        form.addRow("小蓝性格", self.prompt)
+        form.addRow("凯喵性格", self.prompt)
         form.addRow("番茄钟时长(分)", self.tomato)
         form.addRow(self.sedentary_on)
         form.addRow("久坐提醒间隔(分)", self.sedentary_min)
@@ -1293,6 +1293,10 @@ class DesktopPet(QWidget):
         super().leaveEvent(e)
 
     def mousePressEvent(self, e):
+        # 穿透模式：左键事件穿过到下面窗口，右键仍呼出菜单
+        if self.click_through and e.button() == Qt.LeftButton:
+            e.ignore()
+            return
         if e.button() == Qt.LeftButton:
             self._drag_start = e.globalPos() - self.frameGeometry().topLeft()
             self._press_pos = e.globalPos()
@@ -1300,6 +1304,9 @@ class DesktopPet(QWidget):
                 self._set_state("idle")
 
     def mouseMoveEvent(self, e):
+        if self.click_through:
+            e.ignore()
+            return
         if e.buttons() & Qt.LeftButton and self._drag_start is not None:
             self.move(e.globalPos() - self._drag_start)
             now = time.time()
@@ -1309,12 +1316,30 @@ class DesktopPet(QWidget):
                 self.bubble.position_above(self.frameGeometry())
 
     def mouseReleaseEvent(self, e):
+        if self.click_through and e.button() == Qt.LeftButton:
+            e.ignore()
+            return
         if e.button() == Qt.LeftButton:
             moved = (e.globalPos() - self._press_pos).manhattanLength()
             self._drag_start = None
             self._base_pos = self.pos()
+            self._snap_to_edge()  # dsh-pet：拖到边缘自动吸附
             if moved < CLICK_RADIUS:
                 self._on_click()
+
+    def _snap_to_edge(self):
+        """拖到屏幕边缘 40px 内自动吸附"""
+        screen = QApplication.primaryScreen().availableGeometry()
+        geo = self.frameGeometry()
+        x, y = geo.x(), geo.y()
+        sw, sh = screen.width(), screen.height()
+        snapped = False
+        if x < EDGE_SNAP_DIST:
+            x = 0; snapped = True
+        elif x + geo.width() > sw - EDGE_SNAP_DIST:
+            x = sw - geo.width(); snapped = True
+        if snapped:
+            self.move(x, y)
 
     def _on_click(self):
         if self.state == "sleep":
@@ -1338,7 +1363,7 @@ class DesktopPet(QWidget):
     # ---------- 文字输入 ----------
     def _prompt_text_input(self):
         import PyQt5.QtWidgets as QW
-        text, ok = QW.QInputDialog.getText(self, "和小蓝聊天",
+        text, ok = QW.QInputDialog.getText(self, "和凯喵聊天",
                                            "说点什么…（回车发送）")
         if ok and text.strip():
             self.send_user(text.strip())
@@ -1452,7 +1477,7 @@ class DesktopPet(QWidget):
         sense_text = "👁 屏幕感知：开" if self.sense_enabled else "👁 屏幕感知：关"
         m.addAction(sense_text, self._toggle_sense)
         m.addAction("💕 好感度", self._show_status)
-        m.addAction("🍪 喂小蓝", self._feed)
+        m.addAction("🍪 喂凯喵", self._feed)
         ct_text = "👆 点击穿透：开" if self.click_through else "👆 点击穿透：关"
         m.addAction(ct_text, self._toggle_click_through)
         m.addAction("🔄 走两步", lambda: self._set_state(
@@ -1522,13 +1547,8 @@ class DesktopPet(QWidget):
     def _toggle_click_through(self):
         self.click_through = not self.click_through
         self._affinity_dirty = True
-        flag = Qt.WindowTransparentForInput if self.click_through else Qt.WA_TranslucentBackground
-        if self.click_through:
-            self.setWindowFlags(self.windowFlags() | Qt.WindowTransparentForInput)
-        else:
-            self.setWindowFlags(self.windowFlags() & ~Qt.WindowTransparentForInput)
-        self.show()
-        self.bubble.show_text("点击穿透已" + ("开启（右键仍可控制）" if self.click_through else "关闭"))
+        # 不再改 window flag，只在事件里手动拦截左键，右键永远可用
+        self.bubble.show_text("点击穿透已" + ("开启（左键穿透，右键仍可呼出菜单）" if self.click_through else "关闭"))
         self.bubble.position_above(self.frameGeometry())
 
     def _show_status(self):
