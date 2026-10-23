@@ -124,14 +124,28 @@ QUICK_LAUNCH_ITEMS = [         # 快捷启动项：{名称, 命令}
     {"name": "启动 jupyter",  "cmd": r"cmd /c start jupyter notebook"},
 ]
 
-# 屏幕感知：窗口关键词 → 桌宠姿态
+# 屏幕感知：窗口关键词 → 桌宠姿态（更丰富）
 SCENE_MAP = {
-    "code|vscode|visual studio|pycharm|cursor|terminal|cmd|python|idea|doubao|chatgpt|claude|gemini|agent|豆包|deepseek|kimi": "coding",
-    "bilibili|youtube|netflix|video|player|动漫|视频": "waving",
-    "error|exception|崩溃|错误|fail|traceback": "failed",
-    "game|steam|游戏|unity": "running_left",
-    "word|excel|ppt|document|文档|写作": "stand",
-    "chat|wechat|微信|qq|discord|slack": "shy",
+    # 写代码 / AI 助手 → coding（敲键盘+托腮思考交替）
+    "code|vscode|visual studio|pycharm|cursor|terminal|cmd|python|idea|doubao|chatgpt|claude|gemini|agent|豆包|deepseek|kimi|trae|windsurf|zed|neovim": "coding",
+    # 看视频 / 直播 → waving
+    "bilibili|youtube|netflix|video|player|动漫|视频|直播|twitch|douyin|抖音|爱奇艺|腾讯视频": "waving",
+    # 错误 / 崩溃 → failed
+    "error|exception|崩溃|错误|fail|traceback|蓝屏|bsod": "failed",
+    # 游戏 → 跑动
+    "game|steam|游戏|unity|unreal|epic|genshin|原神|honkai|崩坏": "running_left",
+    # 办公 / 写作 → stand
+    "word|excel|ppt|powerpoint|document|文档|写作|notion|obsidian|备忘录|notepad": "stand",
+    # 社交聊天 → shy
+    "chat|wechat|微信|qq|discord|slack|telegram|whatsapp|钉钉|feishu|飞书": "shy",
+    # 音乐 / 音频 → sitting（放松）
+    "music|spotify|网易云|qq音乐|music|audio|播放器": "sit",
+    # 设计 / 画图 → thinking
+    "photoshop|illustrator|figma|blender|ae|premiere|剪辑|设计|ps|ai画图|midjourney": "thinking",
+    # 浏览器闲逛 → walking
+    "chrome|edge|firefox|safari|浏览器|baidu|google|搜索|news|新闻": "walk",
+    # 休眠（系统锁屏）→ sleep
+    "lock|锁屏|登录|sign in": "sleep",
 }
 WINDOW_POLL_INTERVAL = 3000     # 窗口监听间隔 ms
 CODING_TEXTS = [
@@ -160,7 +174,7 @@ EMOTION_MAP = {                       # 状态 → 姿态图文件
     "shy": "emo_shy.png",
     "walk2": "emo_walk2.png",
     "coding": "emo_coding.png",
-    "coding_old": "emo_thinking.png",
+    "walk": "emo_running_right.png",
 }
 # 走路帧循环
 WALK_FRAMES = ["emo_running_left.png", "emo_walk2.png", "emo_running_right.png", "emo_walk2.png"]
