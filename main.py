@@ -97,6 +97,21 @@ ALARM_TEXTS = ["时间到啦！", "该起身休息一下咯", "任务完成✨"]
 CLICK_TEXTS = ["你来啦！", "嘿嘿，好舒服~", "怎么啦？"]
 SLEEP_BUBBLE = "💤 睡着了，轻点唤醒我"
 
+# ---- dsh-pet 附加：好感度 / 等级 / 喂食 / 点击穿透 ----
+AFFINITY_RANKS = [
+    (0,    "幼鲸",    "*"),
+    (25,   "伙伴",    "**"),
+    (50,   "挚友",    "***"),
+    (80,   "深海羁绊", "****"),
+    (200,  "心有灵犀", "*****"),
+    (500,  "传说羁绊", "******"),
+    (2000, "神话羁绊", "*******"),
+]
+FEED_TEXTS = ["好吃！谢谢你~", "哇！是我最爱的小鱼干！", "嗝…好满足", "下次还想吃这个~"]
+CLICK_TEXTS_AFF = ["嘿嘿，被摸头了~", "再来一下嘛", "你今天看起来心情不错"]
+EDGE_SNAP_DIST = 40          # 距离屏幕边缘 px 内自动吸附
+CLICK_THROUGH_MARGIN = 6     # 点击穿透模式下非响应区域
+
 # ---- 实用功能参数 ----
 TOMATO_DEFAULT_MIN = 25        # 番茄钟默认 25 分钟
 SEDENTARY_DEFAULT_MIN = 45     # 久坐提醒默认 45 分钟
@@ -876,6 +891,11 @@ class DesktopPet(QWidget):
         self._base_pos = QPoint()
         self._walked = 0.0
         self._walk_dir = 0
+        # dsh-pet 附加：好感度 / 喂食 / 点击穿透
+        self.affinity = int(self.cfg.get("affinity", 0))
+        self.treats = int(self.cfg.get("treats", 3))
+        self.click_through = bool(self.cfg.get("click_through", False))
+        self._affinity_dirty = False
 
         # 动画定时器
         self.timer = QTimer(self)
@@ -1303,7 +1323,8 @@ class DesktopPet(QWidget):
             self.bubble.position_above(self.frameGeometry())
             return
         self._set_state("waving")
-        self.bubble.show_text(random.choice(CLICK_TEXTS), timeout=2000)
+        self._add_affinity(1)  # dsh-pet：点击 +1 好感
+        self.bubble.show_text(random.choice(CLICK_TEXTS + CLICK_TEXTS_AFF), timeout=2000)
         self.bubble.position_above(self.frameGeometry())
         if self.busy:
             self.bubble.show_text("正在思考呢，稍等一下下~")
@@ -1379,6 +1400,12 @@ class DesktopPet(QWidget):
     def _show_reply(self, reply):
         self.busy = False
         self._set_state("jump")
+        self._add_affinity(1)  # dsh-pet：完成对话 +1 好感
+        # 每完成 5 轮对话补 1 根零食
+        self._turn_count = getattr(self, "_turn_count", 0) + 1
+        if self._turn_count % 5 == 0 and self.treats < 20:
+            self.treats += 1
+            self._affinity_dirty = True
         self.bubble.show_text(reply, timeout=8000)
         self.bubble.position_above(self.frameGeometry())
         if self.cfg.get("voice_enabled", True):
@@ -1424,6 +1451,10 @@ class DesktopPet(QWidget):
         m.addSeparator()
         sense_text = "👁 屏幕感知：开" if self.sense_enabled else "👁 屏幕感知：关"
         m.addAction(sense_text, self._toggle_sense)
+        m.addAction("💕 好感度", self._show_status)
+        m.addAction("🍪 喂小蓝", self._feed)
+        ct_text = "👆 点击穿透：开" if self.click_through else "👆 点击穿透：关"
+        m.addAction(ct_text, self._toggle_click_through)
         m.addAction("🔄 走两步", lambda: self._set_state(
             random.choice(("running_left", "running_right"))))
         m.addAction("⚙ 设置", self._open_settings)
@@ -1451,6 +1482,58 @@ class DesktopPet(QWidget):
         else:
             self.bubble.show_text("找不到热榜组件", timeout=2500)
             self.bubble.position_above(self.frameGeometry())
+
+    # ---------- dsh-pet 附加：好感度 / 喂食 / 点击穿透 ----------
+    def _add_affinity(self, n=1):
+        self.affinity += n
+        self._affinity_dirty = True
+
+    def _rank_name(self):
+        name, stars = "幼鲸", "*"
+        for pts, n, s in AFFINITY_RANKS:
+            if self.affinity >= pts:
+                name, stars = n, s
+        return f"{stars} {name} (好感 {self.affinity})"
+
+    def _save_affinity(self):
+        if self._affinity_dirty:
+            self.cfg["affinity"] = self.affinity
+            self.cfg["treats"] = self.treats
+            self.cfg["click_through"] = self.click_through
+            try:
+                with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+                    json.dump(self.cfg, f, ensure_ascii=False, indent=2)
+            except Exception:
+                pass
+            self._affinity_dirty = False
+
+    def _feed(self):
+        if self.treats <= 0:
+            self.bubble.show_text("零食吃完啦，对话 5 轮会自动补一根~")
+            self.bubble.position_above(self.frameGeometry())
+            return
+        self.treats -= 1
+        self._add_affinity(5)
+        self._set_state("jump")
+        self.bubble.show_text(random.choice(FEED_TEXTS))
+        self.bubble.position_above(self.frameGeometry())
+        self._affinity_dirty = True
+
+    def _toggle_click_through(self):
+        self.click_through = not self.click_through
+        self._affinity_dirty = True
+        flag = Qt.WindowTransparentForInput if self.click_through else Qt.WA_TranslucentBackground
+        if self.click_through:
+            self.setWindowFlags(self.windowFlags() | Qt.WindowTransparentForInput)
+        else:
+            self.setWindowFlags(self.windowFlags() & ~Qt.WindowTransparentForInput)
+        self.show()
+        self.bubble.show_text("点击穿透已" + ("开启（右键仍可控制）" if self.click_through else "关闭"))
+        self.bubble.position_above(self.frameGeometry())
+
+    def _show_status(self):
+        self.bubble.show_text(self._rank_name() + f" | 零食 {self.treats}")
+        self.bubble.position_above(self.frameGeometry())
 
     def _coding_cheer(self):
         if self.state == "coding":
@@ -1514,6 +1597,7 @@ class DesktopPet(QWidget):
         except Exception:
             pass
         self.voice.stop()
+        self._save_affinity()
         self.bubble.close()
         super().closeEvent(e)
 
