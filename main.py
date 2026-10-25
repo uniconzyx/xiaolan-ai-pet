@@ -1283,12 +1283,9 @@ class DesktopPet(QWidget):
 
     # ---------- 遮罩 ----------
     def _update_mask(self):
-        pm = self.avatar_label.pixmap()
-        if pm is None or pm.isNull():
-            return
-        img = pm.toImage().convertToFormat(QImage.Format_ARGB32)
-        mask = img.createMaskFromColor(QColor(0, 0, 0, 0).rgba(), Qt.MaskInColor)
-        self.setMask(QBitmap.fromImage(mask))
+        # WA_TranslucentBackground 已处理透明，不需要手动 setMask
+        # 之前用 createMaskFromColor(黑色) 导致白色透明区域没被mask掉
+        pass
 
     # ---------- 定位 ----------
     def _place(self):
